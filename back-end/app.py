@@ -13,11 +13,8 @@ def hello_world():
     compiler_output = request.args.get('comp_output')
     content = request.args.get('content')
     language = request.args.get('language')
-    # json_file = open("sample_data.json",'r')
-    # for row in json.load(json_file):
-    #     compiler_output = row['comp_output']
-    #     data1, data2, data3, data4 = db_util.err_msg_match(compiler_output)
-    return jsonify(content=compiler_output, d4=content)
+    data1, data2, data3, data4 = db_util.err_msg_match(compiler_output)
+    return jsonify(question_df=data1.to_json(), question_time=data2, answer_df=data3.to_json(), answer_time=data4)
     # return "hello world"
 
 
