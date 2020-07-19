@@ -27,8 +27,9 @@ export default {
   },
   methods: {
     load_sample_data(){
-      this.$axios.get("sample_data.json").then(response =>{
-          self.response_data = response.data;
+      this.$axios.get("/sample_data.json").then(response =>{
+          self.response_data = response.data[0];
+          console.log(self.response_data)
           this.content = response_data.content;
           this.comp_output = response_data.comp_output;
           this.language = response_data.language;
