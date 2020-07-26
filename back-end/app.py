@@ -16,7 +16,8 @@ def hello_world():
     content = request.args.get('content')
     language = request.args.get('language')
     result, question_query_time, answer_query_time = db_util.err_msg_match(compiler_output)
-    return jsonify(query_result=result.to_json(), question_time=question_query_time, answer_time=answer_query_time)
+    print(result)
+    return jsonify(query_result=result.to_json(orient='records'), question_time=question_query_time, answer_time=answer_query_time)
     # return "hello world"
 
 
