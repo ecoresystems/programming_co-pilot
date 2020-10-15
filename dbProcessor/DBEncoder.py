@@ -9,7 +9,6 @@ from .DBUtils import DBUtils
 
 class DBEncoder:
     def __init__(self):
-        self.bc = None
         self.table_name = None
         self.row_count = None
         self.step = 1000
@@ -98,18 +97,20 @@ class DBEncoder:
         db_utils.close()
         return None
 
+    def encode_table(self, table_name, server_addresses, step=20):
+        self.table_name = table_name
+        self.bert_servers = server_addresses
+        self.step = step
+        self.process_num = len(server_addresses)
+        database_tools = DBUtils()
+        db_encoder.row_count = database_tools.get_row_count(table_name)
+        self.run_parallel_encoding()
+        pass
+
 
 if __name__ == "__main__":
     db_encoder = DBEncoder()
-    # .252: RTX8000
-    # .253: Titan
-    # .250: 2080Ti
-    db_encoder.bert_servers = ['192.168.17.250', '192.168.17.252']
-    db_encoder.table_name = 'PythonImportErrorTest'
-    db_encoder.step = 20
-    db_encoder.process_num = len(db_encoder.bert_servers)
-    database_tools = DBUtils()
-    db_encoder.row_count = database_tools.get_row_count('PythonImportErrorTest')
-    # db_encoder.encoding_database(0)
-    db_encoder.run_parallel_encoding()
+    table = 'PythonImportErrorTest'
+    bert_servers = ['192.168.17.250', '192.168.17.252']
+    db_encoder.encode_table(table_name=table, server_addresses=bert_servers)
     pass

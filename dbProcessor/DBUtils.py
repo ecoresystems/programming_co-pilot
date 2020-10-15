@@ -31,10 +31,11 @@ class DBUtils:
                  "ADD COLUMN CodeVectorSum FLOAT,"
                  "ADD COLUMN ErrMsgVector MEDIUMBLOB,"
                  "ADD COLUMN ErrMsgVectorSum FLOAT".format(table_name=table_name))
+        self.commit_operation()
         self.cursor.execute(query)
 
     def duplicate_table(self, table_name, appendix='Test'):
-        create_query = ("CREATE TABLE {old_table_name} LIKE {new_table_name}"
+        create_query = ("CREATE TABLE {new_table_name} LIKE {old_table_name}"
                         .format(old_table_name=table_name, new_table_name=(table_name + appendix)))
         copy_data_query = ("INSERT INTO {new_table_name} SELECT * FROM {old_table_name};"
                            .format(new_table_name=(table_name + appendix), old_table_name=table_name))
