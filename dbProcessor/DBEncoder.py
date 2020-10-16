@@ -1,5 +1,6 @@
 import time
 from multiprocessing import Process
+import logging
 
 import bs4
 from bert_serving.client import BertClient
@@ -9,6 +10,7 @@ from .DBUtils import DBUtils
 
 class DBEncoder:
     def __init__(self):
+        logging.basicConfig(filename='dbutils.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
         self.table_name = None
         self.row_count = None
         self.step = 1000
@@ -17,9 +19,9 @@ class DBEncoder:
         pass
 
     def run_parallel_encoding(self):
-        print("Running Parallel Task With Parallel Process: " + str(self.process_num))
+        logging.info("Running Parallel Task With Parallel Process: " + str(self.process_num))
         # with open("endpoint", "r", encoding='utf-8') as file:
-        #     print(file.read())
+        #     logging.info(file.read())
         #     if file.read() != '':
         #         sp = int(file.read())
         #     else:
@@ -30,9 +32,9 @@ class DBEncoder:
             batch_start_point = batch_index * batch_size
             with open("endpoint", 'w', encoding='utf-8') as file:
                 file.write(str(batch_start_point))
-            print("Processed %d rows of data" % batch_start_point)
-            print("Completed Percentage: %0.2f%%" % (batch_start_point * 100 / self.row_count))
-            print("String to process batch: " + str(batch_index))
+            logging.info("Processed %d rows of data" % batch_start_point)
+            logging.info("Completed Percentage: %0.2f%%" % (batch_start_point * 100 / self.row_count))
+            logging.info("String to process batch: " + str(batch_index))
             process_list = []
             for process_index in range(self.process_num):
                 p = Process(target=self.encoding_database,
@@ -40,15 +42,15 @@ class DBEncoder:
                 process_list.append(p)
                 p.start()
 
-            print("All batch process load complete")
-            print("Waiting process sync")
+            logging.info("All batch process load complete")
+            logging.info("Waiting process sync")
             for p in process_list:
                 p.join()
                 p.close()
-            print("Process synced")
+            logging.info("Process synced")
             time_cost = time.time() - batch_string_time
-            print("Batch %d with %d rows cost %0.2f seconds, ETA: " % (batch_index, batch_size, time_cost), end='')
-            print(time.strftime("%H:%M:%S",
+            logging.info("Batch %d with %d rows cost %0.2f seconds, ETA: " % (batch_index, batch_size, time_cost), end='')
+            logging.info(time.strftime("%H:%M:%S",
                                 time.gmtime(time_cost * (self.row_count - batch_size * batch_index) / batch_size)))
 
     def encoding_database(self, starting_point, process_index):
@@ -58,7 +60,7 @@ class DBEncoder:
         result = db_utils.iterate_rows(err_type=table_name, start_point=starting_point, step=self.step)
         for row in result:
             Id = row[0]
-            print("Processing ID: %d" % Id)
+            logging.info("Processing ID: %d" % Id)
             accepted_answer_id = row[2]
             question_body = row[8]
             soup = bs4.BeautifulSoup(question_body, "html.parser")
