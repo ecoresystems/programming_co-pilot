@@ -1,12 +1,23 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS, cross_origin
 import os
+
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+
 from .utils import db_util
-import json
 
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+@app.route('/annotation', methods=['GET'])
+def get_annotator_page():
+    return render_template('annotator.html')
+
+
+@app.route('/api/load_std_code_snippet', methods=['GET'])
+def get_std_code_snippet():
+    pass
 
 
 @app.route('/api/get_recommendation', methods=['GET'])
@@ -17,7 +28,8 @@ def hello_world():
     language = request.args.get('language')
     result, question_query_time, answer_query_time = db_util.err_msg_match(compiler_output)
     print(result)
-    return jsonify(query_result=result.to_json(orient='records'), question_time=question_query_time, answer_time=answer_query_time)
+    return jsonify(query_result=result.to_json(orient='records'), question_time=question_query_time,
+                   answer_time=answer_query_time)
     # return "hello world"
 
 
@@ -26,5 +38,3 @@ if __name__ == '__main__':
     dname = os.path.dirname(abspath)
     os.chdir(dname)
     app.run()
-
-
