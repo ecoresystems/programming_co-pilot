@@ -34,17 +34,16 @@
                     <el-submenu index="1">
                         <template slot="title"><i class="el-icon-setting"></i>Solutions</template>
                         <el-menu-item-group>
-                            <template slot="title">Group 1</template>
-                            <el-menu-item index="3-1">Option 1</el-menu-item>
-                            <el-menu-item index="3-2">Option 2</el-menu-item>
+                            <el-menu-item index="3-1">Solution 1</el-menu-item>
+                            <el-menu-item index="3-2">Solution 2</el-menu-item>
                         </el-menu-item-group>
-                        <el-menu-item-group title="Group 2">
-                            <el-menu-item index="3-3">Option 3</el-menu-item>
-                        </el-menu-item-group>
-                        <el-submenu index="3-4">
-                            <template slot="title">Option 4</template>
-                            <el-menu-item index="3-4-1">Option 4-1</el-menu-item>
-                        </el-submenu>
+                        <!--                        <el-menu-item-group title="Group 2">-->
+                        <!--                            <el-menu-item index="3-3">Option 3</el-menu-item>-->
+                        <!--                        </el-menu-item-group>-->
+                        <!--                        <el-submenu index="3-4">-->
+                        <!--                            <template slot="title">Option 4</template>-->
+                        <!--                            <el-menu-item index="3-4-1">Option 4-1</el-menu-item>-->
+                        <!--                        </el-submenu>-->
                     </el-submenu>
                 </el-menu>
             </el-aside>
@@ -75,7 +74,11 @@
 
                         <el-row>
                             <el-col>
-                                <el-card>Some compiler output</el-card>
+                                <el-card>
+                                    <p>
+                                        <span v-html="compilerOutput"></span>
+                                    </p>
+                                </el-card>
                             </el-col>
                         </el-row>
                     </el-col>
@@ -83,11 +86,11 @@
 
                     <el-col :span="12">
                         <el-row :gutter="20">
-                            <el-col><span>Suggested Posts</span></el-col>
+                            <el-col><span>Suggested Solution</span></el-col>
                         </el-row>
                         <el-row :gutter="20">
                             <el-col>
-                                <el-card>Suggested Posts</el-card>
+                                <el-card>Suggested Post</el-card>
                             </el-col>
                         </el-row>
                         <el-row type="flex" class="row-bg" justify="center">
@@ -98,9 +101,9 @@
                         </el-row>
 
                         <el-row type="flex" class="row-bg" justify="end">
-                        <el-button type="primary" plain>Next Without Save</el-button>
-                        <el-button type="success" plain>Save & Next</el-button>
-                            </el-row>
+                            <el-button type="primary" plain>Next Without Save</el-button>
+                            <el-button type="success" plain>Save & Next</el-button>
+                        </el-row>
                     </el-col>
 
                 </el-row>
@@ -143,7 +146,7 @@
             lineNumbers: true,
             indentUnit: 4,
             matchBrackets: true,
-            value: "sample code"
+            value: "print('nice)"
         });
     };
 </script>
@@ -152,7 +155,14 @@
     var vm = new Vue({
         el: '#app',
         data: {
-            rateRadio: ''
+            rateRadio: '',
+            compilerOutput: '/Users/conan/anaconda3/bin/python3.7 /Users/conan/Desktop/Projects/programming_co-pilot/main.py\n' +
+                '  File "/Users/conan/Desktop/Projects/programming_co-pilot/main.py", line 1\n' +
+                '    print(\'nice)\n' +
+                '               ^\n' +
+                'SyntaxError: EOL while scanning string literal\n' +
+                '\n' +
+                'Process finished with exit code 1'
         },
         created: function () {
             this.inIt();
@@ -164,6 +174,18 @@
         computed: {},
 
         methods: {
+            inIt: function () {
+                let self = this;
+                self.compilerOutput = self.compilerOutput.replaceAll(' ', '&nbsp;')
+                self.compilerOutput = self.compilerOutput.replaceAll('\n', '<br>')
+
+            },
+            getCodeSnippet: function (saveAppraisal, appraisal) {
+                axios.get('/api/load_std_code_snippet?saveAppraisal=' + saveAppraisal + '&appraisal=' + appraisal)
+                    .then(function (response) {
+
+                    })
+            },
             base64ToUint8Array: function (base64) {
                 let raw = atob(base64);
                 let uint8Array = new Uint8Array(raw.length);

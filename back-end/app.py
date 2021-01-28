@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
@@ -17,11 +19,14 @@ def get_annotator_page():
 
 @app.route('/api/load_std_code_snippet', methods=['GET'])
 def get_std_code_snippet():
+    # TODO: Load student code from database
+    # TODO: Execute code and get compiler output
+    # TODO: Return the code and the compiler output to front end
     pass
 
 
 @app.route('/api/get_recommendation', methods=['GET'])
-def hello_world():
+def get_recommendation():
     print("Receiving Get Request")
     compiler_output = request.args.get('comp_output')
     content = request.args.get('content')
@@ -31,6 +36,20 @@ def hello_world():
     return jsonify(query_result=result.to_json(orient='records'), question_time=question_query_time,
                    answer_time=answer_query_time)
     # return "hello world"
+
+
+def code_executor(code_snippet):
+    with open("main.py", 'w', encoding='utf-8') as python_file:
+        python_file.write(code_snippet)
+    print("Opening process")
+    os.environ['PYTHONUNBUFFERED'] = "1"
+    proc = subprocess.Popen([sys.executable, 'main.py'],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            )
+    stdout, stderr = proc.communicate()
+
+    return proc.returncode, stdout, stderr
 
 
 if __name__ == '__main__':
