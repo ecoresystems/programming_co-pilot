@@ -1,13 +1,14 @@
-def maxlist(x):
-    if len(x)==0:
-        return 0
-    else:
-        k=x[0]
-        while i<len(x):
-            if x[i]>k:
-                k=x[i]
-                i+=1
-            elif x[i]<=m:
-                i+=1
-        return k
-    print(maxlist([1, 4, 5]))
+def count(x):
+    j = 0
+    dic = {}
+    for i in range(0,len(x)):
+        if x[i] in x:
+            j = +1
+            dic[x[i]] = j
+            i = +1
+        if x[i] in dic:
+            dic[x[i]] = j + 1
+            i = +1
+    return dic      
+             
+print(count([1,4,1,4,2,1,3,5,6]))             
