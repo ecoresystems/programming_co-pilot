@@ -31,6 +31,7 @@ def get_recommendation():
     compiler_output = request.args.get('comp_output')
     content = request.args.get('content')
     language = request.args.get('language')
+    matching_method = request.args.get('matching_method')
     result, question_query_time, answer_query_time = db_util.err_msg_match(compiler_output)
     print(result)
     return jsonify(query_result=result.to_json(orient='records'), question_time=question_query_time,
