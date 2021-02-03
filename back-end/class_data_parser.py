@@ -1,8 +1,9 @@
-import os, sys
-from pathlib import Path
-import subprocess
-import sqlite3
 import codecs
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
 
 
 class ClassDataParser:
@@ -15,6 +16,10 @@ class ClassDataParser:
         Path(self.db_dir_path).mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
+        self.python_error_list = []
+        with open('PythonErrors.csv', 'r') as python_errors:
+            for error in python_errors:
+                self.python_error_list.append(error[:-1])
         pass
 
     def db_file_execution(self):
@@ -26,26 +31,27 @@ class ClassDataParser:
         print(total)
         for row in data:
             counter += 1
-            print('Processing %d lines of data, total: %d'%(counter,total))
+            print('Processing %d lines of data, total: %d' % (counter, total))
             id = row[0]
             code = codecs.escape_decode(bytes(row[1][1:-2], "utf-8"))[0].decode("utf-8")
             print(code)
             if 'input()' in code:
-                return_code=0
-                stdout=''
-                stderr=''
+                return_code = 0
+                stdout = ''
+                stderr = ''
             else:
                 return_code, stdout, stderr = self.code_executor(code)
-                print('****************************')
-                print(stdout.decode('utf-8'))
-                # print(stderr)
-            print(return_code)
+                matches = [x for x in self.python_error_list if x in stdout.decode('utf-8')]
+                err_type = matches[0]
+                print(err_type)
             if return_code == 0:
                 status = 'passed'
             else:
+                if return_code == -9:
+                    err_type = 'TimeOut'
                 status = 'failed'
-            sql = '''update student_code set execution_status = ?,executed = ? where id = ?'''
-            self.cursor.execute(sql, (status, 1, id))
+            sql = '''update student_code set execution_status = ?,executed = ?, error_type = ?, return_code = ? where id = ?'''
+            self.cursor.execute(sql, (status, 1, err_type, return_code, id))
             if counter % 50 == 0:
                 self.conn.commit()
 

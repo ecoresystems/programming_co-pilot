@@ -2,6 +2,7 @@ import pickle
 import time
 
 import mysql.connector
+import numpy as np
 from bert_serving.client import BertClient
 
 
@@ -29,13 +30,27 @@ class VectorMatcher:
                 print("Connection time out for encoding server @ %s" % bc_addr)
         pass
 
-    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float):
+    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float,type:str):
         upper_limit = central_vector_sum + threshold
         lower_limit = central_vector_sum - threshold
-        sql = '''select Id, FeatureVector,VectorSum,CodeVector,CodeVectorSum,ErrMsgVector,ErrMsgVectorSum from 
-                {table_name} where CodeVectorSum between %s and %s'''.format(table_name=table_name)
+        if type == 'code':
+            sql = '''select Id,CodeVector from {table_name} where CodeVectorSum between %s and %s'''.format(
+                table_name=table_name)
+        else:
+            sql = '''select Id,ErrMsgVector from {table_name} where ErrMsgVectorSum between %s and %s'''.format(
+                table_name=table_name)
         self.cursor.execute(sql, (lower_limit, upper_limit))
-        return self.cursor.fetchall()
+        results = self.cursor.fetchall()
+        vector_arrays = np.array([])
+        post_id_list = []
+        # This is the row count for each code's array
+        array_row_list = []
+        for row in results:
+            post_id_list.append(row[0])
+            vector_array = pickle.loads(row[1])
+            array_row_list.append(vector_array.shape[0])
+            vector_arrays = np.concatenate((vector_arrays, vector_array), axis=0)
+        return vector_arrays, post_id_list, array_row_list
         pass
 
     def err_msg_matcher(self):
@@ -65,6 +80,4 @@ class VectorMatcher:
 
 if __name__ == "__main__":
     vector_matcher = VectorMatcher()
-    result = vector_matcher.vector_loader('PythonValueErrorTest',1,0.05)
-    for row in result:
-        print(pickle.loads(row[1]).shape)
+    vectors, post_ids, code_block_count = vector_matcher.vector_loader('PythonValueErrorTest', 1, 0.05,'code')
