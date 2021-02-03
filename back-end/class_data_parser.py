@@ -18,7 +18,7 @@ class ClassDataParser:
         pass
 
     def db_file_execution(self):
-        self.cursor.execute('select * from student_code where executed is null')
+        self.cursor.execute('select * from student_code where execution_status =\'failed\'')
         # self.cursor.execute('select * from student_code')
         data = self.cursor.fetchall()
         counter = 0
@@ -36,6 +36,9 @@ class ClassDataParser:
                 stderr=''
             else:
                 return_code, stdout, stderr = self.code_executor(code)
+                print('****************************')
+                print(stdout.decode('utf-8'))
+                # print(stderr)
             print(return_code)
             if return_code == 0:
                 status = 'passed'
