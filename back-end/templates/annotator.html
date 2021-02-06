@@ -30,6 +30,19 @@
         </el-header>
         <el-container>
             <el-aside width="200px" style="background-color: rgb(238, 241, 246)">
+                <el-row margin-top="20px">
+                    <el-col> <span>Error Type Selection</span></el-col>
+                </el-row>
+                <el-row>
+                    <el-select v-model="err_type" placeholder="Random" @change="getCodeSnippet">
+                        <el-option
+                                v-for="item in options"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                        </el-option>
+                    </el-select>
+                </el-row>
                 <el-menu :default-openeds="['1']">
                     <el-submenu index="1">
                         <template slot="title"><i class="el-icon-setting"></i>Solutions</template>
@@ -136,56 +149,161 @@
     CodeMirror.commands.autocomplete = function (cm) {
         CodeMirror.showHint(cm, CodeMirror.hint.html);
     }
-    window.onload = function () {
-        editor = CodeMirror(document.getElementById("code"), {
-            mode: {
-                name: "python",
-                version: 3,
-                singleLineStringErrors: false
-            },
-            lineNumbers: true,
-            indentUnit: 4,
-            matchBrackets: true,
-            value: "print('nice)"
-        });
-    };
 </script>
 <script>
     Vue.config.devtools = true;
     var vm = new Vue({
         el: '#app',
         data: {
+            options: [{
+                value: 'random',
+                label: 'Random'
+            },
+                {
+                    value: 'OverflowError',
+                    label: 'OverflowError'
+                },
+                {
+                    value: 'ZeroDivisionError',
+                    label: 'ZeroDivisionError'
+                },
+                {
+                    value: 'AttributeError',
+                    label: 'AttributeError'
+                },
+                {
+                    value: 'ImportError',
+                    label: 'ImportError'
+                },
+                {
+                    value: 'ModuleNotFoundError',
+                    label: 'ModuleNotFoundError'
+                },
+                {
+                    value: 'IndexError',
+                    label: 'IndexError'
+                },
+                {
+                    value: 'KeyError',
+                    label: 'KeyError'
+                },
+                {
+                    value: 'NameError',
+                    label: 'NameError'
+                },
+                {
+                    value: 'UnboundLocalError',
+                    label: 'UnboundLocalError'
+                },
+                {
+                    value: 'FileNotFoundError',
+                    label: 'FileNotFoundError'
+                },
+                {
+                    value: 'RuntimeError',
+                    label: 'RuntimeError'
+                },
+                {
+                    value: 'RecursionError',
+                    label: 'RecursionError'
+                },
+                {
+                    value: 'SyntaxError',
+                    label: 'SyntaxError'
+                },
+                {
+                    value: 'IndentationError',
+                    label: 'IndentationError'
+                },
+                {
+                    value: 'TabError',
+                    label: 'TabError'
+                },
+                {
+                    value: 'TypeError',
+                    label: 'TypeError'
+                },
+                {
+                    value: 'ValueError',
+                    label: 'ValueError'
+                },],
             rateRadio: '',
-            compilerOutput: '/Users/conan/anaconda3/bin/python3.7 /Users/conan/Desktop/Projects/programming_co-pilot/main.py\n' +
-                '  File "/Users/conan/Desktop/Projects/programming_co-pilot/main.py", line 1\n' +
-                '    print(\'nice)\n' +
-                '               ^\n' +
-                'SyntaxError: EOL while scanning string literal\n' +
-                '\n' +
-                'Process finished with exit code 1'
+            compilerOutput: '',
+            content: "",
+            language: "",
+            query_result: "",
+            question_query_time: "",
+            answer_query_time: "",
+            err_type: 'random',
+            code_id: '',
+            code_snippet: '',
+            err_msg: '',
+            editor: ''
         },
         created: function () {
-            this.inIt();
         },
 
         mounted: function () {
+            let self = this;
+            self.editor = CodeMirror(document.getElementById("code"), {
+                mode: {
+                    name: "python",
+                    version: 3,
+                    singleLineStringErrors: false
+                },
+                lineNumbers: true,
+                indentUnit: 4,
+                matchBrackets: true,
+                value: ""
+            });
+            this.getCodeSnippet('random');
         },
 
         computed: {},
 
         methods: {
-            inIt: function () {
-                let self = this;
-                self.compilerOutput = self.compilerOutput.replaceAll(' ', '&nbsp;')
-                self.compilerOutput = self.compilerOutput.replaceAll('\n', '<br>')
-
+            character_rephrase: function (input_str) {
+                input_str = input_str.replaceAll(' ', '&nbsp;')
+                input_str = input_str.replaceAll('\n', '<br>')
+                return input_str
             },
-            getCodeSnippet: function (saveAppraisal, appraisal) {
-                axios.get('/api/load_std_code_snippet?saveAppraisal=' + saveAppraisal + '&appraisal=' + appraisal)
+            getCodeSnippet: function () {
+                let self = this;
+                axios.get('/api/load_std_code_snippet', {params: {err_type: self.err_type}})
                     .then(function (response) {
-
+                        self.code_id = response.data.code_id;
+                        self.code_snippet = response.data.code_snippet;
+                        self.err_msg = response.data.err_msg;
+                        self.compilerOutput = self.character_rephrase(self.err_msg);
+                        self.editor.setValue(self.code_snippet);
+                        self.get_copilot()
                     })
             },
+
+            get_copilot() {
+                let self = this;
+                axios.get("/api/get_recommendation", {
+                        params: {
+                            comp_output: self.err_msg,
+                            content: self.code_snippet,
+                            language: 'python',
+                        }
+                    })
+                    .then(response => {
+                        let response_data = response.data;
+                        this.query_result = response_data.query_result;
+                        this.query_result = JSON.parse(response_data.query_result);
+                        this.question_query_time = response_data.question_time;
+                        this.answer_query_time = response_data.answer_time;
+                        this.$notify({
+                            title: "Search successful!",
+                            type: "success",
+                            message: "Got " + this.query_result.length + " hits in " + (this.answer_query_time + this.question_query_time) + "s",
+                            duration: 5000
+                        });
+                    });
+            },
+
             base64ToUint8Array: function (base64) {
                 let raw = atob(base64);
                 let uint8Array = new Uint8Array(raw.length);

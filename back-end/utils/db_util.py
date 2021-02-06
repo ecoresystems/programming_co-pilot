@@ -4,7 +4,7 @@ import time
 
 
 def err_msg_match(err_msg: str):
-    cnx = mysql.connector.connect(user='sotorrent', password='so-admin',
+    cnx = mysql.connector.connect(user='sotorrent', password='sotorrent',
                                   host='192.168.17.253',
                                   database='sotorrent20_03')
     err_type = err_msg.split('\n')[-1]

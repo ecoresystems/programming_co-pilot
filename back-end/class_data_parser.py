@@ -58,7 +58,8 @@ class ClassDataParser:
             if counter % 50 == 0:
                 self.conn.commit()
 
-    def code_executor(self, code_snippet):
+    @staticmethod
+    def code_executor( code_snippet):
         with open("main.py", 'w', encoding='utf-8') as python_file:
             python_file.write(code_snippet)
         os.environ['PYTHONUNBUFFERED'] = "1"

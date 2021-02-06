@@ -36,16 +36,22 @@ class VectorMatcher:
             for error in python_errors:
                 self.python_error_list.append(error[:-1])
 
-    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float, type: str):
+    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float, msg_type: str):
         upper_limit = central_vector_sum + threshold
         lower_limit = central_vector_sum - threshold
-        if type == 'code':
+        counting_sql = '''select count(*) from {table_name} where CodeVectorSum between %s and %s'''.format(
+                table_name=table_name)
+        self.cursor.execute(counting_sql, (lower_limit, upper_limit))
+        print("Getting results, counting: ",end='')
+        print(self.cursor.fetchone()[0])
+        if msg_type == 'code':
             sql = '''select Id,CodeVector from {table_name} where CodeVectorSum between %s and %s'''.format(
                 table_name=table_name)
         else:
             sql = '''select Id,ErrMsgVector from {table_name} where ErrMsgVectorSum between %s and %s'''.format(
                 table_name=table_name)
         self.cursor.execute(sql, (lower_limit, upper_limit))
+        print('Fetching result from vector base')
         results = self.cursor.fetchall()
         vector_arrays = np.array([]).reshape(0, 1024)
         post_id_list = []
@@ -68,8 +74,6 @@ class VectorMatcher:
                 break
         return post_id_list[id_index]
 
-        pass
-
     def code_matcher(self, src_vector, vector_arrays, post_id_list, array_row_list, num_candidates: int):
         l2_distances = np.linalg.norm(vector_arrays - src_vector, axis=1)
         sorting_array = np.argsort(l2_distances)[:num_candidates]
@@ -80,9 +84,11 @@ class VectorMatcher:
         pass
 
     def sequences_encoder(self, sequences: list):
+        print('String Encoding Routine')
         while True:
             for index, server_status in enumerate(self.status_list):
                 if server_status == 0:
+                    print('Using encoding server #%d'%index)
                     self.status_list[index] = 1
                     encoder = self.bc_encoders[index]
                     encoded_vector = encoder.encode(sequences)
@@ -107,8 +113,23 @@ class VectorMatcher:
         result_ids = self.code_matcher(encoded_code, vectors, post_ids, code_block_count, num_candidates)
         return result_ids
 
+    def solution_loader(self, id_list: list):
+        sql = '''select Id,AcceptedAnswerId,Title,Body from Posts where Id in (%s)'''
+        answer_sql = '''select Id, Body from Posts where Id in (%s)'''
+        format_strings = ','.join(['%s'] * len(id_list))
+        self.cursor.execute(sql% format_strings,tuple(id_list))
+        questions_info = self.cursor.fetchall()
+        answer_id_list = []
+        for question_info in questions_info:
+            answer_id_list.append(question_info[1])
+        format_strings = ','.join(['%s'] * len(answer_id_list))
+        self.cursor.execute(answer_sql% format_strings,tuple(answer_id_list))
+        answers = self.cursor.fetchall()
+        return questions_info, answers
+
 
 if __name__ == "__main__":
-    vector_matcher = VectorMatcher()
-    ids = vector_matcher.solution_finder('ValueError', 'print(x)', 0.01, 5)
-    print(ids)
+    # vector_matcher = VectorMatcher()
+    # ids = vector_matcher.solution_finder('ValueError', 'print(x)', 0.01, 5)
+    # print(ids)
+    pass
