@@ -6,10 +6,15 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 from .utils import db_util
+from .annotation_service import AnnotationService
+# from .vector_matcher import VectorMatcher
+# vector_matcher = VectorMatcher()
 
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+annotation_service = AnnotationService()
+
 
 
 @app.route('/annotation', methods=['GET'])
@@ -19,9 +24,11 @@ def get_annotator_page():
 
 @app.route('/api/load_std_code_snippet', methods=['GET'])
 def get_std_code_snippet():
+    annotation_service.test_func()
     # TODO: Load student code from database
     # TODO: Execute code and get compiler output
     # TODO: Return the code and the compiler output to front end
+    return 'anything'
     pass
 
 

@@ -3,6 +3,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import csv
 from pathlib import Path
 
 
@@ -91,7 +92,16 @@ class ClassDataParser:
                 self.cursor.execute("INSERT INTO student_code (code) VALUES (?)", (row,))
         self.conn.commit()
 
+    def error_type_statistic(self):
+        sql = "select count(*) from student_code where error_type = ?"
+        with open('stat.csv','w') as statistical_file:
+            csv_writer = csv.writer(statistical_file)
+            for error_type in self.python_error_list:
+                self.cursor.execute(sql,(error_type,))
+                csv_writer.writerow([error_type,self.cursor.fetchone()[0]])
+
 
 if __name__ == "__main__":
     cdp = ClassDataParser()
-    cdp.db_file_execution()
+    # cdp.db_file_execution()
+    cdp.error_type_statistic()

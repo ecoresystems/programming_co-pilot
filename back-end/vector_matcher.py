@@ -8,6 +8,7 @@ from bert_serving.client import BertClient
 
 class VectorMatcher:
     def __init__(self):
+        # Initialize database connection
         self.db_name = 'sotorrent20_03'
         self.db_password = 'sotorrent'
         self.db_username = 'sotorrent'
@@ -18,19 +19,24 @@ class VectorMatcher:
         print('Connecting to Database @ %s' % self.db_address)
         self.cursor = self.cnx.cursor()
         print('Connected!')
+        # Initialize BC encoders
         self.bc_encoders = []
         self.num_bc_encoders = len(self.encoder_addresses)
         self.status_list = [0] * self.num_bc_encoders
         for bc_addr in self.encoder_addresses:
             print('Connecting to Encoding Server @ %s' % bc_addr)
             try:
-                self.bc_encoders.append(BertClient(ip=bc_addr, timeout=1))
+                self.bc_encoders.append(BertClient(ip=bc_addr, timeout=1000))
                 print('Connected!')
             except TimeoutError:
                 print("Connection time out for encoding server @ %s" % bc_addr)
-        pass
+        # Python Error types
+        self.python_error_list = []
+        with open('PythonErrors.csv', 'r') as python_errors:
+            for error in python_errors:
+                self.python_error_list.append(error[:-1])
 
-    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float,type:str):
+    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float, type: str):
         upper_limit = central_vector_sum + threshold
         lower_limit = central_vector_sum - threshold
         if type == 'code':
@@ -41,7 +47,7 @@ class VectorMatcher:
                 table_name=table_name)
         self.cursor.execute(sql, (lower_limit, upper_limit))
         results = self.cursor.fetchall()
-        vector_arrays = np.array([])
+        vector_arrays = np.array([]).reshape(0, 1024)
         post_id_list = []
         # This is the row count for each code's array
         array_row_list = []
@@ -51,12 +57,26 @@ class VectorMatcher:
             array_row_list.append(vector_array.shape[0])
             vector_arrays = np.concatenate((vector_arrays, vector_array), axis=0)
         return vector_arrays, post_id_list, array_row_list
+
+    def id_locator(self, vector_index: int, post_id_list: list, array_row_list: list):
+        row_count_sum = 0
+        id_index = 0
+        for index, row_count in enumerate(array_row_list):
+            row_count_sum += row_count
+            if row_count_sum >= vector_index:
+                id_index = index
+                break
+        return post_id_list[id_index]
+
         pass
 
-    def err_msg_matcher(self):
-        pass
-
-    def code_matcher(self):
+    def code_matcher(self, src_vector, vector_arrays, post_id_list, array_row_list, num_candidates: int):
+        l2_distances = np.linalg.norm(vector_arrays - src_vector, axis=1)
+        sorting_array = np.argsort(l2_distances)[:num_candidates]
+        id_list = []
+        for vector_index in sorting_array:
+            id_list.append(self.id_locator(vector_index, post_id_list, array_row_list))
+        return id_list
         pass
 
     def sequences_encoder(self, sequences: list):
@@ -71,13 +91,24 @@ class VectorMatcher:
             time.sleep(0.1)
         pass
 
-    def solution_finder(self, err_type: str, err_msg: str, code_snippet: str):
-        encoding_list = [err_msg, code_snippet]
-        table_name = 'Python' + err_type
-        encoded_vector = self.sequences_encoder(encoding_list)
-        pass
+    def solution_finder(self, err_msg: str, code_snippet: str, threshold: float, num_candidates: int):
+        matches = [x for x in self.python_error_list if x in err_msg]
+        if len(matches) == 0:
+            err_type = 'Unknown'
+            #     Sent to database dummy matching routine
+            return 999999999
+        else:
+            err_type = matches[0]
+        table_name = 'Python' + err_type + 'Test'
+        encoded_code = self.sequences_encoder([code_snippet])
+        central_vector_sum = encoded_code.sum()
+        print('Central Vector Sum = %f' % central_vector_sum)
+        vectors, post_ids, code_block_count = self.vector_loader(table_name, central_vector_sum, threshold, 'code')
+        result_ids = self.code_matcher(encoded_code, vectors, post_ids, code_block_count, num_candidates)
+        return result_ids
 
 
 if __name__ == "__main__":
     vector_matcher = VectorMatcher()
-    vectors, post_ids, code_block_count = vector_matcher.vector_loader('PythonValueErrorTest', 1, 0.05,'code')
+    ids = vector_matcher.solution_finder('ValueError', 'print(x)', 0.01, 5)
+    print(ids)
