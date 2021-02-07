@@ -10,7 +10,7 @@ def err_msg_match(err_msg: str):
     err_type = err_msg.split('\n')[-1]
     err_type = err_type.replace("'", "''")
     print(err_type)
-    sql = "SELECT AcceptedAnswerId,Title,Body FROM PythonModuleNotFoundError WHERE Body LIKE \'%%%s%%\' AND AnswerCount>2 AND AcceptedAnswerId IS NOT NULL" % err_type
+    sql = "SELECT AcceptedAnswerId,Title,Body FROM PythonModuleNotFoundError WHERE Body LIKE \'%%%s%%\' AND AnswerCount>2 AND AcceptedAnswerId IS NOT NULL limit 10" % err_type
     print(sql)
     start_time = time.time()
     question_df = pd.read_sql(sql, cnx, params={"err_type": err_type})

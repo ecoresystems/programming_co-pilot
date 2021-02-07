@@ -1,3 +1,4 @@
+import atexit
 import pickle
 import time
 
@@ -26,7 +27,7 @@ class VectorMatcher:
         for bc_addr in self.encoder_addresses:
             print('Connecting to Encoding Server @ %s' % bc_addr)
             try:
-                self.bc_encoders.append(BertClient(ip=bc_addr, timeout=1000))
+                self.bc_encoders.append(BertClient(ip=bc_addr, timeout=5000))
                 print('Connected!')
             except TimeoutError:
                 print("Connection time out for encoding server @ %s" % bc_addr)
@@ -35,15 +36,37 @@ class VectorMatcher:
         with open('PythonErrors.csv', 'r') as python_errors:
             for error in python_errors:
                 self.python_error_list.append(error[:-1])
+        atexit.register(self.close_connections)
 
-    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float, msg_type: str):
-        upper_limit = central_vector_sum + threshold
-        lower_limit = central_vector_sum - threshold
-        counting_sql = '''select count(*) from {table_name} where CodeVectorSum between %s and %s'''.format(
-                table_name=table_name)
-        self.cursor.execute(counting_sql, (lower_limit, upper_limit))
-        print("Getting results, counting: ",end='')
-        print(self.cursor.fetchone()[0])
+    def close_connections(self):
+        print('Closing BC connections...')
+        for bc_connections in self.bc_encoders:
+            bc_connections.close()
+        self.cnx.close()
+
+    def adaptive_threshold(self, table_name: str, central_vector_sum: float, threshold: float, step: float,
+                           minimum_count: int, err_identifier: str):
+        # err_identifier = err_identifier.replace('\'','\\\'')
+        # counting_sql = (
+        #             '''select count(*) from {table_name} where Body LIKE \'%{err_identifier}%\' and CodeVectorSum between %s and %s''').format(
+        #     err_identifier=err_identifier,table_name=table_name)
+        counting_sql = (
+            '''select count(*) from {table_name} where  CodeVectorSum between %s and %s''').format(
+            table_name=table_name)
+        result_count = 0
+        while result_count < minimum_count:
+            upper_limit = central_vector_sum + threshold
+            lower_limit = central_vector_sum - threshold
+            self.cursor.execute(counting_sql, (lower_limit, upper_limit))
+            result_count = int(self.cursor.fetchone()[0])
+            print('counting %d' % result_count)
+            threshold += step
+        return upper_limit, lower_limit
+
+    def vector_loader(self, table_name: str, central_vector_sum: float, threshold: float, msg_type: str, step: float,
+                      minimum_count: int, err_identifier: str):
+        upper_limit, lower_limit = self.adaptive_threshold(table_name, central_vector_sum, threshold, step,
+                                                           minimum_count, err_identifier)
         if msg_type == 'code':
             sql = '''select Id,CodeVector from {table_name} where CodeVectorSum between %s and %s'''.format(
                 table_name=table_name)
@@ -88,7 +111,7 @@ class VectorMatcher:
         while True:
             for index, server_status in enumerate(self.status_list):
                 if server_status == 0:
-                    print('Using encoding server #%d'%index)
+                    print('Using encoding server #%d' % index)
                     self.status_list[index] = 1
                     encoder = self.bc_encoders[index]
                     encoded_vector = encoder.encode(sequences)
@@ -97,7 +120,8 @@ class VectorMatcher:
             time.sleep(0.1)
         pass
 
-    def solution_finder(self, err_msg: str, code_snippet: str, threshold: float, num_candidates: int):
+    def solution_finder(self, err_msg: str, code_snippet: str, threshold: float, num_candidates: int, step: float,
+                        minimum_count: int):
         matches = [x for x in self.python_error_list if x in err_msg]
         if len(matches) == 0:
             err_type = 'Unknown'
@@ -105,11 +129,14 @@ class VectorMatcher:
             return 999999999
         else:
             err_type = matches[0]
+        err_identifier = err_msg.split(matches[0])[1][2:-1]
+        print(err_identifier)
         table_name = 'Python' + err_type + 'Test'
         encoded_code = self.sequences_encoder([code_snippet])
         central_vector_sum = encoded_code.sum()
         print('Central Vector Sum = %f' % central_vector_sum)
-        vectors, post_ids, code_block_count = self.vector_loader(table_name, central_vector_sum, threshold, 'code')
+        vectors, post_ids, code_block_count = self.vector_loader(table_name, central_vector_sum, threshold, 'code',
+                                                                 step, minimum_count, err_identifier)
         result_ids = self.code_matcher(encoded_code, vectors, post_ids, code_block_count, num_candidates)
         return result_ids
 
@@ -117,13 +144,13 @@ class VectorMatcher:
         sql = '''select Id,AcceptedAnswerId,Title,Body from Posts where Id in (%s)'''
         answer_sql = '''select Id, Body from Posts where Id in (%s)'''
         format_strings = ','.join(['%s'] * len(id_list))
-        self.cursor.execute(sql% format_strings,tuple(id_list))
+        self.cursor.execute(sql % format_strings, tuple(id_list))
         questions_info = self.cursor.fetchall()
         answer_id_list = []
         for question_info in questions_info:
             answer_id_list.append(question_info[1])
         format_strings = ','.join(['%s'] * len(answer_id_list))
-        self.cursor.execute(answer_sql% format_strings,tuple(answer_id_list))
+        self.cursor.execute(answer_sql % format_strings, tuple(answer_id_list))
         answers = self.cursor.fetchall()
         return questions_info, answers
 

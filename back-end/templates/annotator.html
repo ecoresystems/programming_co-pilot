@@ -29,9 +29,9 @@
             <span>Annotation & Demonstration Page</span>
         </el-header>
         <el-container>
-            <el-aside width="200px" style="background-color: rgb(238, 241, 246)">
+            <el-aside width="400px" style="background-color: rgb(238, 241, 246)">
                 <el-row margin-top="20px">
-                    <el-col> <span>Error Type Selection</span></el-col>
+                    <el-col><span>Error Type Selection</span></el-col>
                 </el-row>
                 <el-row>
                     <el-select v-model="err_type" placeholder="Random" @change="getCodeSnippet">
@@ -47,8 +47,11 @@
                     <el-submenu index="1">
                         <template slot="title"><i class="el-icon-setting"></i>Solutions</template>
                         <el-menu-item-group>
-                            <el-menu-item index="3-1">Solution 1</el-menu-item>
-                            <el-menu-item index="3-2">Solution 2</el-menu-item>
+                            <el-menu-item v-for="(suggestion,index) in matching_response" :key="suggestion.question_id"
+                                          @click="loadSuggestion(index)">
+                                <span
+                                        v-text="suggestion.question_title"></span>
+                            </el-menu-item>
                         </el-menu-item-group>
                         <!--                        <el-menu-item-group title="Group 2">-->
                         <!--                            <el-menu-item index="3-3">Option 3</el-menu-item>-->
@@ -103,7 +106,16 @@
                         </el-row>
                         <el-row :gutter="20">
                             <el-col>
-                                <el-card>Suggested Post</el-card>
+                                <el-card class="box-card">
+                                    <div slot="header" class="clearfix">
+                                        <span v-text="post_title"></span>
+                                    </div>
+                                    <div><span v-html="question_body"></span> </div>
+                                    <el-divider>Answer</el-divider>
+                                    <div>
+                                        <span v-html="post_body"></span>
+                                    </div>
+                                </el-card>
                             </el-col>
                         </el-row>
                         <el-row type="flex" class="row-bg" justify="center">
@@ -114,7 +126,7 @@
                         </el-row>
 
                         <el-row type="flex" class="row-bg" justify="end">
-                            <el-button type="primary" plain>Next Without Save</el-button>
+                            <el-button type="primary" @click="getCodeSnippet" plain>Next Without Save</el-button>
                             <el-button type="success" plain>Save & Next</el-button>
                         </el-row>
                     </el-col>
@@ -144,6 +156,11 @@
     .el-aside {
         color: #333;
     }
+
+    .box-card {
+    height: 600px;
+        overflow: auto;
+  }
 </style>
 <script>
     CodeMirror.commands.autocomplete = function (cm) {
@@ -238,7 +255,11 @@
             code_id: '',
             code_snippet: '',
             err_msg: '',
-            editor: ''
+            editor: '',
+            matching_response: '',
+            post_title:'Suggested Post',
+            post_body:'',
+            question_body:'',
         },
         created: function () {
         },
@@ -256,12 +277,18 @@
                 matchBrackets: true,
                 value: ""
             });
-            this.getCodeSnippet('random');
+            this.getCodeSnippet();
         },
 
         computed: {},
 
         methods: {
+            loadSuggestion(index) {
+                let self = this;
+                self.post_title = self.matching_response[index].question_title;
+                self.post_body = self.matching_response[index].answer_body;
+                self.question_body = self.matching_response[index].question_body;
+            },
             character_rephrase: function (input_str) {
                 input_str = input_str.replaceAll(' ', '&nbsp;')
                 input_str = input_str.replaceAll('\n', '<br>')
@@ -283,24 +310,27 @@
             get_copilot() {
                 let self = this;
                 axios.get("/api/get_recommendation", {
-                        params: {
-                            comp_output: self.err_msg,
-                            content: self.code_snippet,
-                            language: 'python',
-                        }
-                    })
+                    params: {
+                        comp_output: self.err_msg,
+                        content: self.code_snippet,
+                        language: 'python',
+                    }
+                })
                     .then(response => {
                         let response_data = response.data;
                         this.query_result = response_data.query_result;
                         this.query_result = JSON.parse(response_data.query_result);
                         this.question_query_time = response_data.question_time;
                         this.answer_query_time = response_data.answer_time;
-                        this.$notify({
-                            title: "Search successful!",
-                            type: "success",
-                            message: "Got " + this.query_result.length + " hits in " + (this.answer_query_time + this.question_query_time) + "s",
-                            duration: 5000
-                        });
+                        // this.$notify({
+                        //     title: "Search successful!",
+                        //     type: "success",
+                        //     message: "Got " + this.query_result.length + " hits in " + (this.answer_query_time + this.question_query_time) + "s",
+                        //     duration: 5000
+                        // });
+                        self.matching_response = JSON.parse(response_data.matching_response);
+                        console.log(self.matching_response.length);
+                        self.loadSuggestion(0);
                     });
             },
 

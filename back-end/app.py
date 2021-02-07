@@ -41,7 +41,7 @@ def get_recommendation():
     content = request.args.get('content')
     language = request.args.get('language')
     print('----------------------------------')
-    ids = vector_matcher.solution_finder(compiler_output,content,0.001,5)
+    ids = vector_matcher.solution_finder(compiler_output,content,0.002,5,0.001,20)
     print(len(ids))
     questions_info,answers = vector_matcher.solution_loader(ids)
     print(questions_info)
